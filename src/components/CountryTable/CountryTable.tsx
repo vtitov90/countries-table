@@ -125,7 +125,16 @@ export function CountryTable({
           {countries.map((country) => (
             <Table.Tr key={country.name}>
               {visibleColumns.map((column) => (
-                <Table.Td key={column.id}>{getCellValue(country, column)}</Table.Td>
+                <Table.Td
+                  key={column.id}
+                  style={
+                    isTopThreeValue(country, column)
+                      ? { backgroundColor: "#d3f9d8" }
+                      : undefined
+                  }
+                >
+                  {getCellValue(country, column)}
+                </Table.Td>
               ))}
               <Table.Td>
                 <Flex gap="xs">
