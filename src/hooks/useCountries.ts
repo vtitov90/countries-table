@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
 import type {
   Country,
   ColumnDefinition,
@@ -20,7 +21,11 @@ export function useCountries(columns: ColumnDefinition[]) {
         if (!res.ok) throw new Error("Failed to load countries");
         const data = await res.json();
         const list: Country[] = Array.isArray(data) ? data : data?.countries;
-        if (!cancelled) setCountries((list || []) as Country[]);
+        const normalized = (list || []).map((c: any) => ({
+          ...c,
+          id: c.id != null ? String(c.id) : undefined,
+        })) as Country[];
+        if (!cancelled) setCountries(normalized);
       } catch {
         // fallback to empty list if API not available
         if (!cancelled) setCountries([]);
@@ -82,7 +87,7 @@ export function useCountries(columns: ColumnDefinition[]) {
   const handleCreate = useCallback(
     async (values: Country) => {
       // fill missing fields
-      const payload: Country = { ...values };
+      const payload: Country = { ...values, id: uuidv4() };
       columns.forEach((col) => {
         if (!(col.key in payload)) {
           payload[col.key] =
@@ -95,8 +100,9 @@ export function useCountries(columns: ColumnDefinition[]) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const created = (await res.json()) as Country;
-        setCountries((prev) => [...prev, created]);
+        const created = (await res.json()) as any;
+        const normalized: Country = { ...created, id: created.id != null ? String(created.id) : payload.id };
+        setCountries((prev) => [...prev, normalized]);
       } catch {
         // optimistic fallback
         setCountries((prev) => [...prev, payload]);
@@ -107,7 +113,7 @@ export function useCountries(columns: ColumnDefinition[]) {
 
   const handleEdit = useCallback(
     async (oldCountry: Country, values: Country) => {
-      const id = oldCountry.id ?? countries.find((c) => c.name === oldCountry.name)?.id;
+      const id = (oldCountry.id ?? countries.find((c) => c.name === oldCountry.name)?.id) as string | undefined;
       const updated: Country = { ...values };
       columns.forEach((col) => {
         if (!(col.key in updated)) {
@@ -122,8 +128,9 @@ export function useCountries(columns: ColumnDefinition[]) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...updated, id }),
           });
-          const saved = (await res.json()) as Country;
-          setCountries((prev) => prev.map((c) => (c.id === id ? saved : c)));
+          const saved = (await res.json()) as any;
+          const normalized: Country = { ...saved, id: saved.id != null ? String(saved.id) : id };
+          setCountries((prev) => prev.map((c) => (c.id === id ? normalized : c)));
           return;
         } catch {}
       }
@@ -134,7 +141,7 @@ export function useCountries(columns: ColumnDefinition[]) {
   );
 
   const handleDelete = useCallback(async (country: Country) => {
-    const id = country.id ?? countries.find((c) => c.name === country.name)?.id;
+    const id = (country.id ?? countries.find((c) => c.name === country.name)?.id) as string | undefined;
     if (id) {
       try {
         await fetch(`/api/countries/${id}`, { method: "DELETE" });
