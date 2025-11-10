@@ -6,7 +6,6 @@ import type {
   SortDirection,
 } from "../types";
 import { getInitialCountryValues, sortCountries } from "../utils/tableUtils";
-import countriesData from "../counties.json";
 
 export function useCountries(columns: ColumnDefinition[]) {
   const [countries, setCountries] = useState<Country[]>([]);
@@ -14,7 +13,22 @@ export function useCountries(columns: ColumnDefinition[]) {
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   useEffect(() => {
-    setCountries(countriesData.countries as Country[]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/countries");
+        if (!res.ok) throw new Error("Failed to load countries");
+        const data = await res.json();
+        const list: Country[] = Array.isArray(data) ? data : data?.countries;
+        if (!cancelled) setCountries((list || []) as Country[]);
+      } catch {
+        // fallback to empty list if API not available
+        if (!cancelled) setCountries([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const visibleColumns = useMemo(
@@ -26,6 +40,22 @@ export function useCountries(columns: ColumnDefinition[]) {
     () => sortCountries(countries, sortColumn, sortDirection, columns),
     [countries, sortColumn, sortDirection, columns]
   );
+
+  const persistPatchMany = useCallback(async (next: Country[]) => {
+    // Update each country individually to keep db.json in sync when structure changes
+    await Promise.all(
+      next.map(async (c) => {
+        if (!c.id) return;
+        try {
+          await fetch(`/api/countries/${c.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(c),
+          });
+        } catch {}
+      })
+    );
+  }, []);
 
   const handleSort = useCallback(
     (columnKey: string) => {
@@ -50,48 +80,79 @@ export function useCountries(columns: ColumnDefinition[]) {
   );
 
   const handleCreate = useCallback(
-    (values: Country) => {
-      setCountries((prev) => {
-        const newCountry: Country = { ...values };
-        columns.forEach((col) => {
-          if (!(col.key in newCountry)) {
-            newCountry[col.key] =
-              col.type === "number" ? (col.required ? 0 : null) : "";
-          }
-        });
-        return [...prev, newCountry];
+    async (values: Country) => {
+      // fill missing fields
+      const payload: Country = { ...values };
+      columns.forEach((col) => {
+        if (!(col.key in payload)) {
+          payload[col.key] =
+            col.type === "number" ? (col.required ? 0 : null) : "";
+        }
       });
+      try {
+        const res = await fetch("/api/countries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const created = (await res.json()) as Country;
+        setCountries((prev) => [...prev, created]);
+      } catch {
+        // optimistic fallback
+        setCountries((prev) => [...prev, payload]);
+      }
     },
     [columns]
   );
 
   const handleEdit = useCallback(
-    (oldCountry: Country, values: Country) => {
-      setCountries((prev) => {
-        const updatedCountry: Country = { ...values };
-        columns.forEach((col) => {
-          if (!(col.key in updatedCountry)) {
-            updatedCountry[col.key] =
-              col.type === "number" ? (col.required ? 0 : null) : "";
-          }
-        });
-        return prev.map((c) =>
-          c.name === oldCountry.name ? updatedCountry : c
-        );
+    async (oldCountry: Country, values: Country) => {
+      const id = oldCountry.id ?? countries.find((c) => c.name === oldCountry.name)?.id;
+      const updated: Country = { ...values };
+      columns.forEach((col) => {
+        if (!(col.key in updated)) {
+          updated[col.key] =
+            col.type === "number" ? (col.required ? 0 : null) : "";
+        }
       });
+      if (id) {
+        try {
+          const res = await fetch(`/api/countries/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...updated, id }),
+          });
+          const saved = (await res.json()) as Country;
+          setCountries((prev) => prev.map((c) => (c.id === id ? saved : c)));
+          return;
+        } catch {}
+      }
+      // fallback optimistic
+      setCountries((prev) => prev.map((c) => (c.name === oldCountry.name ? updated : c)));
     },
-    [columns]
+    [columns, countries]
   );
 
-  const handleDelete = useCallback((country: Country) => {
-    setCountries((prev) => prev.filter((c) => c.name !== country.name));
-  }, []);
+  const handleDelete = useCallback(async (country: Country) => {
+    const id = country.id ?? countries.find((c) => c.name === country.name)?.id;
+    if (id) {
+      try {
+        await fetch(`/api/countries/${id}`, { method: "DELETE" });
+      } catch {}
+    }
+    setCountries((prev) => prev.filter((c) => (id ? c.id !== id : c.name !== country.name)));
+  }, [countries]);
 
   const updateCountries = useCallback(
     (updater: (countries: Country[]) => Country[]) => {
-      setCountries(updater);
+      setCountries((prev) => {
+        const next = updater(prev);
+        // best-effort persist
+        persistPatchMany(next);
+        return next;
+      });
     },
-    []
+    [persistPatchMany]
   );
 
   const getInitialValues = useCallback(
