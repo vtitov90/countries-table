@@ -35,8 +35,8 @@ export const sortCountries = (
   const isNumericColumn = column?.type === "number";
 
   return [...countries].sort((a, b) => {
-    const aValue: string | number | null = a[sortColumn];
-    const bValue: string | number | null = b[sortColumn];
+    const aValue: string | number | null | undefined = a[sortColumn];
+    const bValue: string | number | null | undefined = b[sortColumn];
 
     if (aValue === null || aValue === undefined) {
       return 1;
