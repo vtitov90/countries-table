@@ -93,15 +93,19 @@ function App() {
   }, [selectedCountry, handleDelete]);
 
   const handleColumnCreateSubmit = useCallback(
-    (values: ColumnDefinition) => {
+    async (values: ColumnDefinition) => {
       const newColumn = handleColumnCreate(values);
+      const defaultValue = newColumn.type === "number" 
+        ? (newColumn.required ? 0 : null) 
+        : "";
+      
       updateCountries((prevCountries) =>
         prevCountries.map((country) => ({
           ...country,
-          [newColumn.key]:
-            newColumn.type === "number" ? (newColumn.required ? 0 : null) : "",
+          [newColumn.key]: defaultValue,
         }))
       );
+      
       setColumnEditModalOpen(false);
       setSelectedColumn(null);
     },

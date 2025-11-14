@@ -67,7 +67,11 @@ app.put("/api/countries/:id", async (req, res) => {
     if (!country) {
       return res.status(404).json({ error: "Country not found" });
     }
-    Object.assign(country, countryData);
+    for (const key in countryData) {
+      if (key !== "_id" && key !== "__v") {
+        country.set(key, countryData[key]);
+      }
+    }
     country.id = id;
     const updated = await country.save();
     res.json(updated);
@@ -88,7 +92,11 @@ app.patch("/api/countries/:id", async (req, res) => {
     if (!country) {
       return res.status(404).json({ error: "Country not found" });
     }
-    Object.assign(country, countryData);
+    for (const key in countryData) {
+      if (key !== "_id" && key !== "__v") {
+        country.set(key, countryData[key]);
+      }
+    }
     country.id = id;
     const updated = await country.save();
     res.json(updated);

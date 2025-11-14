@@ -50,12 +50,17 @@ export function useCountries(columns: ColumnDefinition[]) {
       next.map(async (c) => {
         if (!c.id) return;
         try {
-          await fetch(`/api/countries/${c.id}`, {
+          const res = await fetch(`/api/countries/${c.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(c),
           });
-        } catch {}
+          if (!res.ok) {
+            console.error(`Failed to update country ${c.id}:`, res.statusText);
+          }
+        } catch (error) {
+          console.error(`Error updating country ${c.id}:`, error);
+        }
       })
     );
   }, []);
@@ -98,7 +103,10 @@ export function useCountries(columns: ColumnDefinition[]) {
           body: JSON.stringify(payload),
         });
         const created = (await res.json()) as any;
-        const normalized: Country = { ...created, id: created.id != null ? String(created.id) : payload.id };
+        const normalized: Country = {
+          ...created,
+          id: created.id != null ? String(created.id) : payload.id,
+        };
         setCountries((prev) => [...prev, normalized]);
       } catch {
         setCountries((prev) => [...prev, payload]);
@@ -109,7 +117,10 @@ export function useCountries(columns: ColumnDefinition[]) {
 
   const handleEdit = useCallback(
     async (oldCountry: Country, values: Country) => {
-      const id = (oldCountry.id ?? countries.find((c) => c.name === oldCountry.name)?.id) as string | undefined;
+      const id = (oldCountry.id ??
+        countries.find((c) => c.name === oldCountry.name)?.id) as
+        | string
+        | undefined;
       const updated: Country = { ...values };
       columns.forEach((col) => {
         if (!(col.key in updated)) {
@@ -125,25 +136,40 @@ export function useCountries(columns: ColumnDefinition[]) {
             body: JSON.stringify({ ...updated, id }),
           });
           const saved = (await res.json()) as any;
-          const normalized: Country = { ...saved, id: saved.id != null ? String(saved.id) : id };
-          setCountries((prev) => prev.map((c) => (c.id === id ? normalized : c)));
+          const normalized: Country = {
+            ...saved,
+            id: saved.id != null ? String(saved.id) : id,
+          };
+          setCountries((prev) =>
+            prev.map((c) => (c.id === id ? normalized : c))
+          );
           return;
         } catch {}
       }
-      setCountries((prev) => prev.map((c) => (c.name === oldCountry.name ? updated : c)));
+      setCountries((prev) =>
+        prev.map((c) => (c.name === oldCountry.name ? updated : c))
+      );
     },
     [columns, countries]
   );
 
-  const handleDelete = useCallback(async (country: Country) => {
-    const id = (country.id ?? countries.find((c) => c.name === country.name)?.id) as string | undefined;
-    if (id) {
-      try {
-        await fetch(`/api/countries/${id}`, { method: "DELETE" });
-      } catch {}
-    }
-    setCountries((prev) => prev.filter((c) => (id ? c.id !== id : c.name !== country.name)));
-  }, [countries]);
+  const handleDelete = useCallback(
+    async (country: Country) => {
+      const id = (country.id ??
+        countries.find((c) => c.name === country.name)?.id) as
+        | string
+        | undefined;
+      if (id) {
+        try {
+          await fetch(`/api/countries/${id}`, { method: "DELETE" });
+        } catch {}
+      }
+      setCountries((prev) =>
+        prev.filter((c) => (id ? c.id !== id : c.name !== country.name))
+      );
+    },
+    [countries]
+  );
 
   const updateCountries = useCallback(
     (updater: (countries: Country[]) => Country[]) => {
