@@ -30,7 +30,6 @@ if (!Array.isArray(db.countries)) {
 const seen = new Set();
 db.countries = db.countries.map((c) => {
   const next = { ...c };
-  // Always replace with UUID string
   next.id = uuidv4();
   while (seen.has(next.id)) {
     next.id = uuidv4();

@@ -179,7 +179,6 @@ export function CountryTable({
           return a.name.localeCompare(b.name);
         });
 
-        // compute rank colors for rating (top-3 by points, ties supported)
         const uniquePointsDesc = Array.from(
           new Set(data.map((d) => d.points))
         ).sort((a, b) => b - a);

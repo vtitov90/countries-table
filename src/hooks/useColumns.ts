@@ -15,7 +15,6 @@ export function useColumns(initialColumns: ColumnDefinition[]) {
         const list: ColumnDefinition[] = Array.isArray(data) ? data : data?.columns;
         if (!cancelled && Array.isArray(list)) setColumns(list);
       } catch {
-        // keep initialColumns on failure
       }
     })();
     return () => {
@@ -28,9 +27,7 @@ export function useColumns(initialColumns: ColumnDefinition[]) {
       ...values,
       id: values.key,
     };
-    // optimistic add first
     setColumns((prev) => [...prev, newColumn]);
-    // persist via json-server
     (async () => {
       try {
         const res = await fetch("/api/columns", {
@@ -86,7 +83,6 @@ export function useColumns(initialColumns: ColumnDefinition[]) {
       const next = prev.map((col) =>
         col.id === columnId ? { ...col, visible: !col.visible } : col
       );
-      // best-effort PATCH
       const target = next.find((c) => c.id === columnId);
       if (target) {
         (async () => {

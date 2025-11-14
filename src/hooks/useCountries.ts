@@ -27,7 +27,6 @@ export function useCountries(columns: ColumnDefinition[]) {
         })) as Country[];
         if (!cancelled) setCountries(normalized);
       } catch {
-        // fallback to empty list if API not available
         if (!cancelled) setCountries([]);
       }
     })();
@@ -47,7 +46,6 @@ export function useCountries(columns: ColumnDefinition[]) {
   );
 
   const persistPatchMany = useCallback(async (next: Country[]) => {
-    // Update each country individually to keep db.json in sync when structure changes
     await Promise.all(
       next.map(async (c) => {
         if (!c.id) return;
@@ -86,7 +84,6 @@ export function useCountries(columns: ColumnDefinition[]) {
 
   const handleCreate = useCallback(
     async (values: Country) => {
-      // fill missing fields
       const payload: Country = { ...values, id: uuidv4() };
       columns.forEach((col) => {
         if (!(col.key in payload)) {
@@ -104,7 +101,6 @@ export function useCountries(columns: ColumnDefinition[]) {
         const normalized: Country = { ...created, id: created.id != null ? String(created.id) : payload.id };
         setCountries((prev) => [...prev, normalized]);
       } catch {
-        // optimistic fallback
         setCountries((prev) => [...prev, payload]);
       }
     },
@@ -134,7 +130,6 @@ export function useCountries(columns: ColumnDefinition[]) {
           return;
         } catch {}
       }
-      // fallback optimistic
       setCountries((prev) => prev.map((c) => (c.name === oldCountry.name ? updated : c)));
     },
     [columns, countries]
@@ -154,7 +149,6 @@ export function useCountries(columns: ColumnDefinition[]) {
     (updater: (countries: Country[]) => Country[]) => {
       setCountries((prev) => {
         const next = updater(prev);
-        // best-effort persist
         persistPatchMany(next);
         return next;
       });

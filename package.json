@@ -6,15 +6,17 @@
   "scripts": {
     "build": "tsc -b && vite build",
     "start": "node server.js",
-    "migrate:ids": "node scripts/migrate-db-ids.mjs"
+    "migrate:ids": "node scripts/migrate-db-ids.mjs",
+    "migrate:mongodb": "node scripts/migrate-to-mongodb.js"
   },
   "dependencies": {
     "@mantine/core": "^8.3.7",
     "@mantine/form": "^8.3.7",
     "@mantine/hooks": "^8.3.7",
     "@tabler/icons-react": "^3.35.0",
+    "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "json-server": "^0.17.4",
+    "mongoose": "^8.19.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "uuid": "^9.0.1"

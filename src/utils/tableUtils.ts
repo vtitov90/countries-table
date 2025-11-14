@@ -125,3 +125,28 @@ export const getTopThreeValues = (
 
   return topThreeValues;
 };
+
+export const labelToKey = (label: string): string => {
+  if (!label || !label.trim()) {
+    return "";
+  }
+
+  const words = label
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
+
+  if (words.length === 0) {
+    return "";
+  }
+
+  const firstWord = words[0].toLowerCase();
+
+  const otherWords = words.slice(1).map((word) => {
+    if (word.length === 0) return "";
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  });
+
+  const camelCase = firstWord + otherWords.join("");
+  return camelCase.replace(/[^a-zA-Z0-9]/g, "");
+};
